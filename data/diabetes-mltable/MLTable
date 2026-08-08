@@ -1,0 +1,21 @@
+# MLTable definition — a blueprint that tells Azure ML how to materialize
+# this folder's contents into a tabular dataframe.
+# Docs: https://learn.microsoft.com/azure/machine-learning/reference-yaml-mltable
+$schema: https://azuremlschemas.azureedge.net/latest/MLTable.schema.json
+
+type: mltable
+
+paths:
+  - file: ./diabetes.csv
+
+transformations:
+  - read_delimited:
+      delimiter: ","
+      header: all_files_same_headers
+      encoding: utf8
+  - convert_column_types:
+      - columns: ["Pregnancies", "PlasmaGlucose", "DiastolicBloodPressure",
+                  "TricepsThickness", "SerumInsulin", "Age", "Diabetic"]
+        column_type: int
+      - columns: ["BMI", "DiabetesPedigree"]
+        column_type: float

@@ -1,0 +1,62 @@
+# ---------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# ---------------------------------------------------------------
+# Secrets & workspace connection details
+# ---------------------------------------------------------------
+# Written by `az ml` / downloaded from the Studio. Contains your
+# subscription ID, resource group and workspace name — never commit.
+config.json
+.azureml/
+
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# ---------------------------------------------------------------
+# Azure ML / MLflow run artifacts
+# ---------------------------------------------------------------
+# Local job output + log directories created by SDK/CLI runs
+outputs/
+artifacts/
+azureml-logs/
+logs/
+
+# Local MLflow tracking store (Lab 05 onwards)
+mlruns/
+mlartifacts/
+
+# Serialized models produced by training runs
+*.pkl
+*.joblib
+
+# ---------------------------------------------------------------
+# Lab-generated data
+# ---------------------------------------------------------------
+# Created by Lab 12 Step 2 from data/diabetes-drift.csv.
+# The source CSVs and data/diabetes-mltable/ ARE tracked.
+data/production-mltable/
+
+# ---------------------------------------------------------------
+# Tooling & OS
+# ---------------------------------------------------------------
+# Local-only Claude Code overrides; .claude/settings.json stays tracked
+.claude/settings.local.json
+
+# JetBrains: .idea/ has its own .gitignore covering workspace.xml etc.
+
+.DS_Store

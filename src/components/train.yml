@@ -1,0 +1,26 @@
+# Component spec: training step wrapping src/train.py (used in Lab 8's pipeline).
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: train_diabetes_model
+display_name: Train diabetes classifier
+description: Trains a logistic-regression model and outputs it in MLflow format.
+version: 1
+
+inputs:
+  training_data:
+    type: uri_folder
+  reg_rate:
+    type: number
+    default: 0.01
+outputs:
+  model_output:
+    type: mlflow_model
+
+code: ..
+command: >-
+  python train.py
+  --training-data ${{inputs.training_data}}
+  --reg-rate ${{inputs.reg_rate}}
+  --model-output ${{outputs.model_output}}
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest

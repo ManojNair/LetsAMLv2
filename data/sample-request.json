@@ -1,0 +1,19 @@
+{
+  "input_data": {
+    "columns": [
+      "Pregnancies",
+      "PlasmaGlucose",
+      "DiastolicBloodPressure",
+      "TricepsThickness",
+      "SerumInsulin",
+      "BMI",
+      "DiabetesPedigree",
+      "Age"
+    ],
+    "index": [0, 1],
+    "data": [
+      [9, 172, 92, 45, 310, 42.6, 1.17, 58],
+      [1, 89, 62, 18, 74, 22.1, 0.14, 23]
+    ]
+  }
+}

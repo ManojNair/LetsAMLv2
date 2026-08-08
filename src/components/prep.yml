@@ -1,0 +1,23 @@
+# Component spec: reusable data-prep step (Lab 4 concept, used in Lab 8's pipeline).
+# Docs: https://learn.microsoft.com/azure/machine-learning/reference-yaml-component-command
+$schema: https://azuremlschemas.azureedge.net/latest/commandComponent.schema.json
+type: command
+
+name: prep_diabetes_data
+display_name: Prepare diabetes data
+description: Drops rows with missing values and min-max scales the feature columns.
+version: 1
+
+inputs:
+  input_data:
+    type: uri_file
+outputs:
+  output_data:
+    type: uri_folder
+
+code: .
+command: >-
+  python prep.py
+  --input-data ${{inputs.input_data}}
+  --output-data ${{outputs.output_data}}
+environment: azureml://registries/azureml/environments/sklearn-1.5/labels/latest
