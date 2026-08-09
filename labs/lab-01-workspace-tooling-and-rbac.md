@@ -76,9 +76,9 @@ Two distinct identity questions, don't conflate them:
 
 ### Step 1 — Install the tooling
 
-```bash
-# Azure CLI (macOS; see docs for other platforms)
-brew update && brew install azure-cli
+```powershell
+# Install Azure CLI with Windows Package Manager
+winget install --exact --id Microsoft.AzureCLI
 
 # The ML extension provides all `az ml` commands
 az extension add -n ml
@@ -88,27 +88,22 @@ az extension update -n ml   # if it was already installed
 az extension show -n ml --query version -o tsv
 ```
 
-Create a Python virtual environment for the SDK labs:
+Create a Python virtual environment for the SDK labs. Run these commands from the repository root:
 
-> **Use Python 3.12 or older.** The Azure ML stack lags behind new Python releases — `pandas~=2.2.0` and `scikit-learn~=1.5.0` ship pre-built wheels only up to Python 3.13. On Python 3.14 pip falls back to compiling them from source, which takes many minutes. On macOS: `brew install python@3.12`, then use `python3.12` below.
+> **Use Python 3.12 or older.** The Azure ML stack lags behind new Python releases — `pandas~=2.2.0` and `scikit-learn~=1.5.0` ship pre-built wheels only up to Python 3.13. On Python 3.14 pip falls back to compiling them from source, which takes many minutes. Install Python 3.12 for Windows first if `python --version` reports a newer release.
 
-```bash
-cd ~/PycharmProjects/LetsAML
-python3.12 -m venv .venv
-source .venv/bin/activate
-python -m pip install azure-ai-ml azure-identity "mlflow~=2.19.0" azureml-mlflow \
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install azure-ai-ml azure-identity "mlflow~=2.19.0" azureml-mlflow `
   "pandas~=2.2.0" "scikit-learn~=1.5.0"
 ```
 
-> **`mltable` is deliberately not in that list — on Apple Silicon it cannot be installed.** The package pulls in `azureml-dataprep-rslex`, a compiled extension that Microsoft publishes only for Linux (x86_64/aarch64), Windows, and **Intel** macOS. There is no `macosx_arm64` wheel for any version, so `pip install mltable` on an M-series Mac fails with `No matching distribution found`. It also pins `azure-identity<=1.17.0`, which conflicts with the version `azure-ai-ml` needs and sends pip into a long backtracking loop before it gives up.
->
-> This blocks exactly one step in these labs: **Lab 02 Step 5**, which calls `mltable.load()` to materialize a table into pandas locally. Everywhere else (`type: mltable` in YAML, `AssetTypes.MLTABLE` in the SDK, AutoML inputs in Lab 06, monitoring inputs in Lab 12) `mltable` is just an *asset-type string* sent to Azure — `azure-ai-ml` handles it, and the parsing happens on the compute target, not your laptop. Creating and consuming MLTable assets works fine.
->
-> If you need Lab 02 Step 5 locally, run it on a compute instance in the workspace, or read the underlying CSV with pandas directly and treat the typed-schema output as read-only reference.
+> **`mltable` is deliberately not in the base package list.** Lab 02 Step 5 is the only local step that imports it. Install it separately with `python -m pip install mltable` when you reach that step so any dependency conflict is isolated and easier to diagnose. Everywhere else, `type: mltable` is an asset-type string handled by Azure ML on the compute target.
 
 ### Step 2 — Sign in and set defaults
 
-```bash
+```powershell
 az login
 az account set --subscription "<your-subscription-name-or-id>"
 
@@ -118,7 +113,7 @@ az configure --defaults group=<your-resource-group> workspace=<your-workspace-na
 
 ### Step 3 — Inspect your existing workspace
 
-```bash
+```powershell
 az ml workspace show
 ```
 
@@ -152,7 +147,7 @@ print(f"Connected to: {ws.name} ({ws.location})")
 print(f"MLflow tracking URI: {ws.mlflow_tracking_uri}")
 ```
 
-```bash
+```powershell
 python check_connection.py
 ```
 
@@ -174,31 +169,31 @@ Open <https://ml.azure.com>, select your workspace, and locate each section in t
 
 ### Step 6 — Examine RBAC assignments
 
-```bash
+```powershell
 # Who has access to the workspace?
-WS_ID=$(az ml workspace show --query id -o tsv)
-az role assignment list --scope $WS_ID -o table
+$workspaceId = az ml workspace show --query id -o tsv
+az role assignment list --scope $workspaceId -o table
 
 # Inspect the built-in AzureML Data Scientist role definition —
 # note the NotActions excluding compute write operations
-az role definition list --name "AzureML Data Scientist" \
+az role definition list --name "AzureML Data Scientist" `
   --query '[0].permissions[0].{actions:actions, notActions:notActions}'
 ```
 
 If you have a second account (or a colleague) to test with, grant scoped access:
 
-```bash
-az role assignment create \
-  --assignee "someone@example.com" \
-  --role "AzureML Data Scientist" \
-  --scope $WS_ID
+```powershell
+az role assignment create `
+  --assignee "someone@example.com" `
+  --role "AzureML Data Scientist" `
+  --scope $workspaceId
 ```
 
 Otherwise, just study the role definition output — the exam asks *which role* fits a scenario, not the command syntax.
 
 ### Step 7 — Look at the workspace's managed identity
 
-```bash
+```powershell
 az ml workspace show --query identity
 ```
 

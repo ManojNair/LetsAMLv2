@@ -51,10 +51,13 @@ A cluster or instance can carry a **managed identity**. Jobs running on it can t
 
 ### Step 1 — Create a compute instance (for notebook work)
 
-```bash
-az ml compute create \
-  --name ci-$(whoami)-dev \
-  --type ComputeInstance \
+```powershell
+$userName = $env:USERNAME.ToLower() -replace '[^a-z0-9-]', '-'
+$computeName = "ci-$userName-dev"
+
+az ml compute create `
+  --name $computeName `
+  --type ComputeInstance `
   --size Standard_DS11_v2
 ```
 
@@ -77,7 +80,7 @@ idle_time_before_scale_down: 120   # seconds a node stays warm after a job
 tier: dedicated           # try low_priority to see the cost difference
 ```
 
-```bash
+```powershell
 az ml compute create --file infra/compute-cluster.yml
 az ml compute show --name cpu-cluster --query '{state:provisioning_state, min:scale_settings.min_instances, max:scale_settings.max_instances}'
 ```
@@ -121,7 +124,7 @@ resources:
 
 ### Step 5 — Try a quota check (common real-world failure)
 
-```bash
+```powershell
 az ml compute list-usage -o table
 ```
 
@@ -129,8 +132,8 @@ This lists your regional vCPU quota per VM family. If a later lab fails with `Qu
 
 ### Step 6 — Stop the compute instance
 
-```bash
-az ml compute stop --name ci-$(whoami)-dev
+```powershell
+az ml compute stop --name $computeName
 ```
 
 A stopped instance keeps its disk (notebooks survive) but stops compute billing. Start it again anytime with `az ml compute start`.

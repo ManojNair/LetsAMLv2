@@ -4,7 +4,7 @@
 
 **Time:** ~60 minutes | **Cost:** pennies of blob storage
 
-**Prerequisites:** Lab 01 completed (CLI + SDK connected, defaults set). Run all commands from the repo root (`~/PycharmProjects/LetsAML`).
+**Prerequisites:** Lab 01 completed (CLI + SDK connected, defaults set). Run all commands from the repository root in PowerShell 7.
 
 ---
 
@@ -76,13 +76,13 @@ wasbs:// abfss://                                        # blob / ADLS Gen2 prot
 
 ### Step 1 — Explore the built-in datastores
 
-```bash
+```powershell
 az ml datastore list -o table
 ```
 
 You'll see `workspaceblobstore` (default, blob container) and `workspaceartifactstore`, plus possibly file-share stores. Confirm which is default:
 
-```bash
+```powershell
 az ml datastore show --name workspaceblobstore --query '{type:type, default:is_default, account:account_name, container:container_name}'
 ```
 
@@ -90,10 +90,11 @@ az ml datastore show --name workspaceblobstore --query '{type:type, default:is_d
 
 We'll register a second datastore pointing at a new container in the *same* storage account — in real projects this would be a data-lake account.
 
-```bash
+```powershell
 # Find the workspace storage account and create a container in it
-STORAGE=$(az ml workspace show --query storage_account -o tsv | xargs basename)
-az storage container create --name labdata --account-name $STORAGE --auth-mode login
+$storageAccountId = az ml workspace show --query storage_account -o tsv
+$storageAccount = $storageAccountId.Trim().Split('/')[-1]
+az storage container create --name labdata --account-name $storageAccount --auth-mode login
 ```
 
 Create `infra/datastore-labdata.yml`:
@@ -103,13 +104,13 @@ $schema: https://azuremlschemas.azureedge.net/latest/azureBlob.schema.json
 name: labdata_store
 type: azure_blob
 description: Lab datastore using identity-based access (no stored credentials).
-account_name: <STORAGE_ACCOUNT_NAME>   # paste the value of $STORAGE
+account_name: <STORAGE_ACCOUNT_NAME>   # paste the value of $storageAccount
 container_name: labdata
 ```
 
 No `credentials:` section = **identity-based access**. Register it:
 
-```bash
+```powershell
 az ml datastore create --file infra/datastore-labdata.yml
 ```
 
@@ -128,13 +129,13 @@ description: Synthetic diabetes patient data, 5000 rows, for the AI-300 labs.
 path: ../data/diabetes.csv
 ```
 
-```bash
+```powershell
 az ml data create --file infra/data-diabetes-csv.yml
 ```
 
 Because `path` is a *local* path, the CLI **uploads** the file to the default datastore and the asset records that cloud location. Verify:
 
-```bash
+```powershell
 az ml data show --name diabetes-csv --version 1 --query path
 ```
 
@@ -171,13 +172,13 @@ for asset in (folder_asset, table_asset):
     print(f"registered {created.name}:{created.version} ({created.type})")
 ```
 
-```bash
+```powershell
 python create_data_assets.py
 ```
 
 ### Step 5 — Consume the MLTable asset
 
-> **Apple Silicon:** this is the one step in the labs that needs the `mltable` package installed locally, and it cannot be installed on an M-series Mac (see the note in Lab 01 Step 1 — its `azureml-dataprep-rslex` dependency has no arm64 macOS wheel). Run this on a workspace compute instance instead, or skip it: the output below shows what you'd see, and nothing later depends on running it locally.
+> This is the one step in the labs that imports the `mltable` package locally. Install it in the active Windows virtual environment with `python -m pip install mltable`. If dependency resolution fails, run the step on a workspace compute instance instead; nothing later depends on running it locally.
 
 ```python
 # read_table.py — materialize the mltable asset into pandas
@@ -200,7 +201,7 @@ Note that `Diabetic` came back as `int` and `BMI` as `float` — the `convert_co
 
 Register version 2 of `diabetes-csv` pointing at the drifted file (we'll need it in Lab 12):
 
-```bash
+```powershell
 az ml data create --name diabetes-csv --version 2 --type uri_file --path data/diabetes-drift.csv
 az ml data list --name diabetes-csv -o table
 ```

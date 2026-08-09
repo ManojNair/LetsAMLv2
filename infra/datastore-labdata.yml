@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/azureBlob.schema.json
+name: labdata_store
+type: azure_blob
+description: Lab datastore using identity-based access (no stored credentials).
+account_name: letsamlstoracc01    # paste the value of $STORAGE
+container_name: labdata

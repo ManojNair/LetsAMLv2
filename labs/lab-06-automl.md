@@ -62,7 +62,7 @@ primary_metric: AUC_weighted
 
 training_data:
   type: mltable
-  path: azureml:diabetes-table:1
+  path: azureml:diabetes-table:2
 
 compute: azureml:cpu-cluster
 n_cross_validations: 5
@@ -83,7 +83,7 @@ featurization:
 
 ### Step 2 — Submit
 
-```bash
+```powershell
 az ml job create --file jobs/automl-job.yml --web
 ```
 
@@ -99,7 +99,7 @@ ml_client = MLClient.from_config(credential=DefaultAzureCredential())
 
 job = automl.classification(
     experiment_name="diabetes-automl",
-    training_data=Input(type="mltable", path="azureml:diabetes-table:1"),
+  training_data=Input(type="mltable", path="azureml:diabetes-table:2"),
     target_column_name="Diabetic",
     primary_metric="AUC_weighted",
     n_cross_validations=5,

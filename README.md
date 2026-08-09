@@ -4,6 +4,8 @@ A complete, self-paced lab series for **Exam AI-300: Operationalizing Machine Le
 
 Every lab is a standalone markdown file that explains the *concept* first, then walks through the *steps* using the current tooling: **Azure ML CLI v2 (`az ml`)**, **Python SDK v2 (`azure-ai-ml`)**, **MLflow**, and **Microsoft Foundry**. Labs assume you already have an Azure ML workspace deployed.
 
+Run all local commands from the repository root in **PowerShell 7 on Windows**. Command examples use PowerShell syntax and `python` resolves to the Python installation selected for the project.
+
 ## How the exam is structured
 
 | Domain | Weight | Labs |

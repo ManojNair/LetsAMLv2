@@ -77,7 +77,7 @@ settings:
   logging_level: info
 ```
 
-```bash
+```powershell
 az ml batch-endpoint create --file infra/batch-endpoint.yml
 az ml batch-deployment create --file infra/batch-deployment.yml --set-default
 ```
@@ -88,9 +88,10 @@ az ml batch-deployment create --file infra/batch-deployment.yml --set-default
 
 Batch scoring input shouldn't contain the label. Create it and register:
 
-```bash
-mkdir -p data/batch-input
-python3 - <<'EOF'
+```powershell
+New-Item -ItemType Directory -Force -Path data/batch-input | Out-Null
+$scriptPath = Join-Path $env:TEMP "prepare_batch_input.py"
+@'
 import csv
 with open("data/diabetes-drift.csv") as f:
     rows = list(csv.reader(f))
@@ -100,45 +101,50 @@ n = len(body) // 4
 for i in range(4):
     with open(f"data/batch-input/patients-{i}.csv", "w", newline="") as out:
         w = csv.writer(out); w.writerow(header); w.writerows(body[i*n:(i+1)*n])
-EOF
+'@ | Set-Content -Path $scriptPath
+python $scriptPath
+Remove-Item -Path $scriptPath
 
-az ml data create --name diabetes-batch-input --version 1 \
+az ml data create --name diabetes-batch-input --version 1 `
   --type uri_folder --path data/batch-input
 ```
 
 ### Step 3 — Invoke (this *starts a job*, it doesn't return predictions)
 
-```bash
-BEP=diabetes-batch-<your-initials>-001
-JOB=$(az ml batch-endpoint invoke --name $BEP \
-  --input azureml:diabetes-batch-input:1 \
-  --query name -o tsv)
-echo "scoring job: $JOB"
-az ml job stream --name $JOB
+```powershell
+$batchEndpointName = "diabetes-batch-<your-initials>-001"
+$jobName = az ml batch-endpoint invoke --name $batchEndpointName `
+  --input azureml:diabetes-batch-input:1 `
+  --query name -o tsv
+Write-Host "scoring job: $jobName"
+az ml job stream --name $jobName
 ```
 
 Watch the cluster scale up, process 4 files as mini-batches, and write results. In Studio the job appears under **Jobs** (it's a pipeline job wrapping the parallel scoring step).
 
 ### Step 4 — Fetch the results
 
-```bash
-az ml job download --name $JOB --output-name score --download-path ./batch-results
-head -5 batch-results/named-outputs/score/predictions.csv
+```powershell
+az ml job download --name $jobName --output-name score --download-path .\batch-results
+Get-Content -Path .\batch-results\named-outputs\score\predictions.csv -TotalCount 5
 ```
 
 Each row: input row index, prediction, source file — appended across all mini-batches.
 
 ### Step 5 — Invoke via REST (how schedulers call it)
 
-```bash
-SCORING_URI=$(az ml batch-endpoint show -n $BEP --query scoring_uri -o tsv)
-TOKEN=$(az account get-access-token --resource https://ml.azure.com --query accessToken -o tsv)
-curl -s -X POST "$SCORING_URI" \
-  -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
-  -d '{"properties": {"InputData": {"uriFolderInput": {
+```powershell
+$scoringUri = az ml batch-endpoint show -n $batchEndpointName --query scoring_uri -o tsv
+$token = az account get-access-token --resource https://ml.azure.com --query accessToken -o tsv
+$headers = @{ Authorization = "Bearer $token" }
+$body = @'
+{"properties": {"InputData": {"uriFolderInput": {
         "JobInputType": "UriFolder",
         "Uri": "azureml://datastores/workspaceblobstore/paths/<path-to-batch-input>"
-      }}}}'
+      }}}}
+'@
+Invoke-RestMethod -Method Post -Uri $scoringUri -Headers $headers `
+  -ContentType "application/json" -Body $body
 ```
 
 > **Exam point:** batch endpoints use **Microsoft Entra tokens** (`az account get-access-token`), not static keys — there is no key auth on batch endpoints. The REST response is a job reference; poll the job for completion.
@@ -153,8 +159,8 @@ curl -s -X POST "$SCORING_URI" \
 
 A batch endpoint is free while idle; delete only if you want a tidy workspace:
 
-```bash
-az ml batch-endpoint delete --name $BEP --yes
+```powershell
+az ml batch-endpoint delete --name $batchEndpointName --yes
 ```
 
 ---

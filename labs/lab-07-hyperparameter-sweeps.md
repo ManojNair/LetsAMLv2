@@ -114,7 +114,7 @@ early_termination:
 
 ### Step 3 — Submit and inspect
 
-```bash
+```powershell
 az ml job create --file jobs/sweep-job.yml --web
 ```
 
@@ -161,9 +161,9 @@ print(ml_client.jobs.create_or_update(sweep_job).studio_url)
 
 ### Step 5 — Get the best trial
 
-```bash
+```powershell
 # The parent job records the best child:
-az ml job show --name <sweep-parent-name> \
+az ml job show --name <sweep-parent-name> `
   --query 'properties."best_child_run_id"'
 ```
 

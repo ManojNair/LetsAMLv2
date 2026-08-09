@@ -49,22 +49,23 @@ Nothing exotic — standard Git discipline applied to ML: code + YAML + pipeline
 
 ### Step 1 — Initialize the repo (source control bullet, done properly)
 
-```bash
-cd ~/PycharmProjects/LetsAML
+```powershell
 git init -b main
-cat > .gitignore <<'EOF'
+@'
 .venv/
 __pycache__/
 batch-results/
-config.json          # contains subscription/workspace ids
+# config.json contains subscription/workspace ids
+config.json
 .amlignore
-EOF
-git add . && git commit -m "AI-300 labs: code, data, jobs, infra"
+'@ | Set-Content -Path .gitignore
+git add .
+git commit -m "AI-300 labs: code, data, jobs, infra"
 ```
 
 Create a GitHub repo and push:
 
-```bash
+```powershell
 gh repo create LetsAML --private --source . --push    # or add a remote manually
 ```
 
@@ -143,12 +144,16 @@ Read it against Lab 01 §1.1: the template *is* the associated-resources diagram
 
 ### Step 3 — Deploy with Azure CLI
 
-```bash
+```powershell
 az group create --name rg-letsaml-iac --location <your-region>
-az deployment group create \
-  --resource-group rg-letsaml-iac \
-  --template-file infra/main.bicep \
-  --parameters baseName=letsaml$RANDOM
+$userSuffix = $env:USERNAME.ToLower() -replace '[^a-z0-9]', ''
+$shortUser = $userSuffix.Substring(0, [Math]::Min(6, $userSuffix.Length))
+$randomSuffix = Get-Random -Minimum 100 -Maximum 999
+$baseName = "letsaml$shortUser$randomSuffix"
+az deployment group create `
+  --resource-group rg-letsaml-iac `
+  --template-file infra/main.bicep `
+  --parameters baseName=$baseName
 
 # verify, then note: re-running the deployment is a no-op (idempotency — the point of IaC)
 az ml workspace list --resource-group rg-letsaml-iac -o table
@@ -156,27 +161,33 @@ az ml workspace list --resource-group rg-letsaml-iac -o table
 
 ### Step 4 — Configure OIDC federation for GitHub
 
-```bash
+```powershell
 # 1. App registration + service principal
-APP_ID=$(az ad app create --display-name letsaml-github-oidc --query appId -o tsv)
-az ad sp create --id $APP_ID
+$appId = az ad app create --display-name letsaml-github-oidc --query appId -o tsv
+az ad sp create --id $appId
 
 # 2. Federated credential trusting your repo's main branch
-az ad app federated-credential create --id $APP_ID --parameters '{
+$federatedCredential = @'
+{
   "name": "letsaml-main",
   "issuer": "https://token.actions.githubusercontent.com",
   "subject": "repo:<your-gh-user>/LetsAML:ref:refs/heads/main",
   "audiences": ["api://AzureADTokenExchange"]
-}'
+}
+'@
+az ad app federated-credential create --id $appId --parameters $federatedCredential
 
 # 3. RBAC on the IaC resource group
-az role assignment create --assignee $APP_ID --role Contributor \
-  --scope $(az group show -n rg-letsaml-iac --query id -o tsv)
+$resourceGroupId = az group show -n rg-letsaml-iac --query id -o tsv
+az role assignment create --assignee $appId --role Contributor `
+  --scope $resourceGroupId
 
 # 4. Store the *identifiers* (not secrets!) in GitHub
-gh secret set AZURE_CLIENT_ID --body $APP_ID
-gh secret set AZURE_TENANT_ID --body $(az account show --query tenantId -o tsv)
-gh secret set AZURE_SUBSCRIPTION_ID --body $(az account show --query id -o tsv)
+gh secret set AZURE_CLIENT_ID --body $appId
+$tenantId = az account show --query tenantId -o tsv
+$subscriptionId = az account show --query id -o tsv
+gh secret set AZURE_TENANT_ID --body $tenantId
+gh secret set AZURE_SUBSCRIPTION_ID --body $subscriptionId
 ```
 
 > Note what is *not* stored: any password. The `subject` string is the security boundary — only workflows on `main` of your repo can redeem tokens. Per-environment federated credentials (`environment:production`) gate prod deploys behind GitHub environment approvals.
@@ -201,7 +212,10 @@ permissions:
 
 jobs:
   provision:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -211,14 +225,17 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
       - name: Deploy infrastructure (idempotent)
         run: |
-          az deployment group create \
-            --resource-group rg-letsaml-iac \
-            --template-file infra/main.bicep \
+          az deployment group create `
+            --resource-group rg-letsaml-iac `
+            --template-file infra/main.bicep `
             --parameters baseName=letsamlci
 
   train:
     needs: provision
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: pwsh
     steps:
       - uses: actions/checkout@v4
       - uses: azure/login@v2
@@ -230,13 +247,15 @@ jobs:
         run: az extension add -n ml -y
       - name: Submit training pipeline
         run: |
-          az ml job create --file jobs/pipeline-job.yml \
-            --resource-group rg-letsaml-iac --workspace-name letsamlcimlw \
+          az ml job create --file jobs/pipeline-job.yml `
+            --resource-group rg-letsaml-iac --workspace-name letsamlcimlw `
             --stream
 ```
 
-```bash
-git add .github infra && git commit -m "Add IaC + OIDC CI/CD" && git push
+```powershell
+git add .github infra
+git commit -m "Add IaC + OIDC CI/CD"
+git push
 gh run watch
 ```
 
@@ -255,18 +274,18 @@ properties: {
 
 plus a **private endpoint** so *you* can still reach it:
 
-```bash
-az network private-endpoint create --name pe-mlw -g rg-letsaml-iac \
-  --vnet-name <vnet> --subnet <subnet> \
-  --private-connection-resource-id <workspace-arm-id> \
-  --group-id amlworkspace \
+```powershell
+az network private-endpoint create --name pe-mlw -g rg-letsaml-iac `
+  --vnet-name <vnet> --subnet <subnet> `
+  --private-connection-resource-id <workspace-arm-id> `
+  --group-id amlworkspace `
   --connection-name mlw-conn
 ```
 
 Managed-VNet outbound rules (for approved-outbound mode) are workspace properties:
 
-```bash
-az ml workspace outbound-rule set --workspace-name <ws> -g <rg> \
+```powershell
+az ml workspace outbound-rule set --workspace-name <ws> -g <rg> `
   --rule pypi --type fqdn --destination "pypi.org"
 ```
 
@@ -274,7 +293,7 @@ Deploy this only if you want to experiment — a private workspace is awkward fr
 
 ### Step 7 — Clean up the IaC environment
 
-```bash
+```powershell
 az group delete --name rg-letsaml-iac --yes --no-wait
 ```
 

@@ -91,7 +91,7 @@ Read it against §1.2 — every binding form appears once.
 
 ### Step 2 — Submit and study the DAG
 
-```bash
+```powershell
 az ml job create --file jobs/pipeline-job.yml --web
 ```
 
@@ -101,7 +101,7 @@ Studio renders the pipeline as a graph. Click each node → its own logs/metrics
 
 Resubmit with **only** the hyperparameter changed:
 
-```bash
+```powershell
 az ml job create --file jobs/pipeline-job.yml --set inputs.reg_rate=1.0
 ```
 
@@ -150,7 +150,7 @@ trigger:
 create_job: ./pipeline-job.yml
 ```
 
-```bash
+```powershell
 az ml schedule create --file jobs/schedule.yml
 az ml schedule list -o table
 

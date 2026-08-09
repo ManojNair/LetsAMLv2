@@ -60,8 +60,8 @@ Open `data/eval/qa-eval.jsonl` — 10 diabetes Q&A rows, each with `query`, `con
 
 ### Step 2 — Run a local evaluation with the SDK
 
-```bash
-pip install azure-ai-evaluation
+```powershell
+python -m pip install azure-ai-evaluation
 ```
 
 Create `run_eval.py`:
@@ -104,7 +104,7 @@ result = evaluate(
 print(json.dumps(result["metrics"], indent=2))
 ```
 
-```bash
+```powershell
 python run_eval.py
 ```
 
@@ -166,27 +166,45 @@ Output: a severity label (Very low → High) + score 0–7 + reasoning. In the *
 
 ### Step 5 — Automate evaluation in CI
 
-Add to `.github/workflows/mlops.yml` (Lab 13's file) — the pattern matters more than the details:
+Create `.github/workflows/genai-eval.yml` — the pattern matters more than the details:
 
-```yaml
-  genai-eval:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: azure/login@v2
-        with: { client-id: "${{ secrets.AZURE_CLIENT_ID }}", tenant-id: "${{ secrets.AZURE_TENANT_ID }}", subscription-id: "${{ secrets.AZURE_SUBSCRIPTION_ID }}" }
-      - run: pip install azure-ai-evaluation openai azure-identity
-      - name: Generate + evaluate
-        run: |
-          python gen_responses.py
-          python run_eval.py
-      - name: Quality gate
-        run: |
-          python - <<'EOF'
-          import json, sys
-          m = json.load(open("eval-results.json"))["metrics"]
-          assert m.get("groundedness.groundedness", 0) >= 4.0, f"Groundedness regression: {m}"
-          EOF
+```powershell
+New-Item -ItemType Directory -Force -Path .github/workflows | Out-Null
+$workflow = [ordered]@{
+    name        = "genai-eval"
+    on          = [ordered]@{ workflow_dispatch = @{} }
+    permissions = [ordered]@{ "id-token" = "write"; contents = "read" }
+    jobs        = [ordered]@{
+        evaluate = [ordered]@{
+            "runs-on" = "windows-latest"
+            defaults = @{ run = @{ shell = "pwsh" } }
+            steps = @(
+                @{ uses = "actions/checkout@v4" }
+                @{
+                    uses = "azure/login@v2"
+                    with = @{
+                        "client-id"       = '${{ secrets.AZURE_CLIENT_ID }}'
+                        "tenant-id"       = '${{ secrets.AZURE_TENANT_ID }}'
+                        "subscription-id" = '${{ secrets.AZURE_SUBSCRIPTION_ID }}'
+                    }
+                }
+                @{ run = "python -m pip install azure-ai-evaluation openai azure-identity" }
+                @{ name = "Generate and evaluate"; run = "python gen_responses.py`npython run_eval.py" }
+                @{
+                    name = "Quality gate"
+                    run = @'
+$metrics = Get-Content -Raw eval-results.json | ConvertFrom-Json
+$groundedness = $metrics.metrics.'groundedness.groundedness'
+if ($groundedness -lt 4.0) {
+    throw "Groundedness regression: $groundedness"
+}
+'@
+                }
+            )
+        }
+    }
+}
+$workflow | ConvertTo-Json -Depth 10 | Set-Content -Path .github/workflows/genai-eval.yml
 ```
 
 A failing groundedness mean now **blocks the deploy** — evaluation as a regression test, which is precisely "set up automated evaluation workflows".
@@ -196,8 +214,8 @@ A failing groundedness mean now **blocks the deploy** — evaluation as a regres
 1. **Connect App Insights:** Foundry portal → your project → **Observability / Tracing** → attach an Application Insights resource (create one if prompted).
 2. **Instrument your client:**
 
-```bash
-pip install azure-monitor-opentelemetry opentelemetry-instrumentation-openai-v2
+```powershell
+python -m pip install azure-monitor-opentelemetry opentelemetry-instrumentation-openai-v2
 ```
 
 ```python

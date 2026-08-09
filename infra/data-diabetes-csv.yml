@@ -1,0 +1,6 @@
+$schema: https://azuremlschemas.azureedge.net/latest/data.schema.json
+name: diabetes-csv
+version: "1"
+type: uri_file
+description: Synthetic diabetes patient data, 5000 rows, for the AI-300 labs.
+path: ../data/diabetes.csv

@@ -104,7 +104,7 @@ resource project 'Microsoft.CognitiveServices/accounts/projects@2025-06-01' = {
 output endpoint string = account.properties.endpoint
 ```
 
-```bash
+```powershell
 az group create -n rg-letsaml-genai -l <region-with-model-availability>   # e.g. eastus2, swedencentral
 az deployment group create -g rg-letsaml-genai --template-file infra/foundry.bicep
 ```
@@ -113,26 +113,26 @@ az deployment group create -g rg-letsaml-genai --template-file infra/foundry.bic
 
 Grant yourself data-plane access (Owner on the subscription doesn't imply it):
 
-```bash
-ACC_ID=$(az cognitiveservices account show -n letsamlaifdy -g rg-letsaml-genai --query id -o tsv)
-az role assignment create --assignee <your-upn> --role "Azure AI User" --scope $ACC_ID
+```powershell
+$accountId = az cognitiveservices account show -n letsamlaifdy -g rg-letsaml-genai --query id -o tsv
+az role assignment create --assignee <your-upn> --role "Azure AI User" --scope $accountId
 ```
 
 ### Step 2 — Deploy two models (chat + embeddings)
 
-```bash
+```powershell
 # Chat model — substitute any current chat model available in your region
-az cognitiveservices account deployment create \
-  -n letsamlaifdy -g rg-letsaml-genai \
-  --deployment-name chat \
-  --model-name gpt-4o-mini --model-version "2024-07-18" --model-format OpenAI \
+az cognitiveservices account deployment create `
+  -n letsamlaifdy -g rg-letsaml-genai `
+  --deployment-name chat `
+  --model-name gpt-4o-mini --model-version "2024-07-18" --model-format OpenAI `
   --sku-name GlobalStandard --sku-capacity 50        # capacity = thousands of TPM
 
 # Embedding model — needed for Lab 16 (RAG)
-az cognitiveservices account deployment create \
-  -n letsamlaifdy -g rg-letsaml-genai \
-  --deployment-name embed \
-  --model-name text-embedding-3-small --model-version "1" --model-format OpenAI \
+az cognitiveservices account deployment create `
+  -n letsamlaifdy -g rg-letsaml-genai `
+  --deployment-name embed `
+  --model-name text-embedding-3-small --model-version "1" --model-format OpenAI `
   --sku-name GlobalStandard --sku-capacity 50
 
 az cognitiveservices account deployment list -n letsamlaifdy -g rg-letsaml-genai -o table
@@ -150,8 +150,8 @@ Open <https://ai.azure.com> → your project. Visit:
 
 ### Step 4 — Call the deployment from code
 
-```bash
-pip install openai azure-identity azure-ai-projects
+```powershell
+python -m pip install openai azure-identity azure-ai-projects
 ```
 
 ```python
@@ -216,8 +216,9 @@ user:
 
 And a **variant** to compare (`prompts/diabetes-assistant-v2.prompty`): copy it, change `version: "2"`, and make the style rule stricter (e.g., "Answer in at most 3 sentences, then one bullet of next steps"). Commit both:
 
-```bash
-git add prompts && git commit -m "Prompt v1 + concise variant v2"
+```powershell
+git add prompts
+git commit -m "Prompt v1 + concise variant v2"
 ```
 
 This *is* the exam bullet "implement version control for prompts by using Git repositories": prompts as reviewable files, one variant per file/version, selection decided by **evaluation results** (you'll score these two variants against each other in Lab 15). Tag the chosen one like any release.

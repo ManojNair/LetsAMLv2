@@ -57,8 +57,9 @@ Alert → action is glue you configure, and the exam wants the pattern, not one 
 
 ### Step 1 — See the drift with your own eyes first
 
-```bash
-python3 - <<'EOF'
+```powershell
+$scriptPath = Join-Path $env:TEMP "compare_diabetes_drift.py"
+@'
 import csv, statistics as st
 def stats(path):
     rows = list(csv.DictReader(open(path)))
@@ -67,7 +68,9 @@ def stats(path):
            {"positive_rate": round(sum(int(r["Diabetic"]) for r in rows)/len(rows), 2)}
 print("training  :", stats("data/diabetes.csv"))
 print("production:", stats("data/diabetes-drift.csv"))
-EOF
+'@ | Set-Content -Path $scriptPath
+python $scriptPath
+Remove-Item -Path $scriptPath
 ```
 
 Glucose ≈ +20, BMI ≈ +4, older population, positive rate 0.46 → 0.75. That's the drift the monitor must catch.
@@ -76,10 +79,11 @@ Glucose ≈ +20, BMI ≈ +4, older population, positive rate 0.46 → 0.75. That
 
 Monitoring works on tabular (mltable) inputs. Reuse the pattern from Lab 02:
 
-```bash
-mkdir -p data/production-mltable
-cp data/diabetes-drift.csv data/production-mltable/
-sed 's/diabetes.csv/diabetes-drift.csv/' data/diabetes-mltable/MLTable > data/production-mltable/MLTable
+```powershell
+New-Item -ItemType Directory -Force -Path data/production-mltable | Out-Null
+Copy-Item -Path data/diabetes-drift.csv -Destination data/production-mltable/
+$mlTable = (Get-Content -Raw -Path data/diabetes-mltable/MLTable).Replace('diabetes.csv', 'diabetes-drift.csv')
+$mlTable | Set-Content -Path data/production-mltable/MLTable
 az ml data create --name diabetes-production --version 1 --type mltable --path data/production-mltable
 ```
 
@@ -147,7 +151,7 @@ create_monitor:
 
 Note the vocabulary: **signals** (data_drift, data_quality, prediction_drift, feature_attribution_drift), **metrics** per signal (Jensen-Shannon distance, PSI, null rate…), **thresholds** per metric, **alert notification** on breach.
 
-```bash
+```powershell
 az ml schedule create --file infra/monitor.yml
 ```
 
@@ -155,7 +159,7 @@ az ml schedule create --file infra/monitor.yml
 
 ### Step 4 — Run it now instead of waiting for 07:00
 
-```bash
+```powershell
 az ml schedule trigger --name diabetes-drift-monitor   # if your CLI version lacks `trigger`, wait for the tick or set the schedule a few minutes ahead
 ```
 
@@ -188,7 +192,7 @@ Inputs/outputs then stream to blob storage as MLTable-ready data, and the monito
 
 ### Step 7 — Clean up
 
-```bash
+```powershell
 az ml schedule disable --name diabetes-drift-monitor
 ```
 

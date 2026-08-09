@@ -63,7 +63,7 @@ auth_mode: key
 description: Real-time diabetes risk scoring
 ```
 
-```bash
+```powershell
 az ml online-endpoint create --file infra/endpoint.yml
 ```
 
@@ -82,7 +82,7 @@ instance_count: 1
 
 No environment, no scoring script — the MLflow signature drives both. Deploy and route all traffic:
 
-```bash
+```powershell
 az ml online-deployment create --file infra/deployment-blue.yml --all-traffic
 ```
 
@@ -109,19 +109,19 @@ def run(raw_data):
 
 ### Step 4 — Test the endpoint
 
-```bash
-EP=diabetes-ep-<your-initials>-001
+```powershell
+$endpointName = "diabetes-ep-<your-initials>-001"
 
 # 1. Built-in invoke (uses the payload in data/sample-request.json)
-az ml online-endpoint invoke --name $EP --request-file data/sample-request.json
+az ml online-endpoint invoke --name $endpointName --request-file data/sample-request.json
 
 # 2. Raw REST — what real clients do
-SCORING_URI=$(az ml online-endpoint show -n $EP --query scoring_uri -o tsv)
-KEY=$(az ml online-endpoint get-credentials -n $EP --query primaryKey -o tsv)
-curl -s -X POST "$SCORING_URI" \
-  -H "Authorization: Bearer $KEY" \
-  -H "Content-Type: application/json" \
-  -d @data/sample-request.json
+$scoringUri = az ml online-endpoint show -n $endpointName --query scoring_uri -o tsv
+$key = az ml online-endpoint get-credentials -n $endpointName --query primaryKey -o tsv
+$headers = @{ Authorization = "Bearer $key" }
+$body = Get-Content -Raw -Path data/sample-request.json
+Invoke-RestMethod -Method Post -Uri $scoringUri -Headers $headers `
+  -ContentType "application/json" -Body $body
 ```
 
 Expected: `[1, 0]` — the high-risk patient flagged, the low-risk one not.
@@ -130,9 +130,9 @@ Expected: `[1, 0]` — the high-risk patient flagged, the low-risk one not.
 
 ### Step 5 — Troubleshoot deliberately
 
-```bash
+```powershell
 # Container logs (scoring server stdout — your first stop on 5xx)
-az ml online-deployment get-logs --endpoint-name $EP --name blue --lines 50
+az ml online-deployment get-logs --endpoint-name $endpointName --name blue --lines 50
 
 # Break a request on purpose: edit a copy of sample-request.json to
 # remove the "Age" column → invoke → observe the 4xx signature-validation
@@ -143,28 +143,28 @@ az ml online-deployment get-logs --endpoint-name $EP --name blue --lines 50
 
 Register the Lab 05 baseline as version 2 if you didn't in Lab 09 (any second version works), then create `green`:
 
-```bash
-sed 's/name: blue/name: green/; s/diabetes-model:1/diabetes-model:2/' \
-  infra/deployment-blue.yml > infra/deployment-green.yml
+```powershell
+$greenDeployment = (Get-Content -Raw -Path infra/deployment-blue.yml).Replace('name: blue', 'name: green').Replace('diabetes-model:1', 'diabetes-model:2')
+$greenDeployment | Set-Content -Path infra/deployment-green.yml
 az ml online-deployment create --file infra/deployment-green.yml
 ```
 
 `green` starts with **0% traffic**. Test it in isolation, then shift gradually:
 
-```bash
+```powershell
 # Direct-test green without exposing users to it:
-az ml online-endpoint invoke --name $EP --deployment-name green \
+az ml online-endpoint invoke --name $endpointName --deployment-name green `
   --request-file data/sample-request.json
 
 # Canary: 10% of live traffic
-az ml online-endpoint update --name $EP --traffic "blue=90 green=10"
+az ml online-endpoint update --name $endpointName --traffic "blue=90 green=10"
 
 # Optionally: mirror 20% to green instead (responses discarded)
-# az ml online-endpoint update --name $EP --mirror-traffic "green=20"
+# az ml online-endpoint update --name $endpointName --mirror-traffic "green=20"
 
 # Promote fully / roll back instantly
-az ml online-endpoint update --name $EP --traffic "blue=0 green=100"
-az ml online-endpoint update --name $EP --traffic "blue=100 green=0"   # ← rollback
+az ml online-endpoint update --name $endpointName --traffic "blue=0 green=100"
+az ml online-endpoint update --name $endpointName --traffic "blue=100 green=0"   # ← rollback
 ```
 
 > **Safe-rollback recipe the exam wants:** keep the old deployment alive at 0% until the new one has soaked; rollback is then a traffic update, not a redeploy.
@@ -175,8 +175,8 @@ Managed online deployments integrate with **Azure Monitor autoscale**: rules sca
 
 ### Step 8 — Clean up (do not skip)
 
-```bash
-az ml online-endpoint delete --name $EP --yes
+```powershell
+az ml online-endpoint delete --name $endpointName --yes
 ```
 
 Deleting the endpoint deletes all its deployments and stops billing.

@@ -49,6 +49,7 @@ def main(args):
     acc = accuracy_score(y_test, y_pred)
     auc = roc_auc_score(y_test, y_score)
 
+    mlflow.log_param("reg_rate", args.reg_rate)
     mlflow.log_metric("test_accuracy", acc)
     mlflow.log_metric("test_auc", auc)
     print(f"accuracy={acc:.4f} auc={auc:.4f} (reg_rate={args.reg_rate})")

@@ -1,0 +1,4 @@
+name: letsaml-registry
+location: australiaeast
+replication_locations:
+  - location: australiaeast

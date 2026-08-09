@@ -64,7 +64,7 @@ flowchart LR
 
 ### Step 1 — Browse curated environments
 
-```bash
+```powershell
 az ml environment list --registry-name azureml --query "[?contains(name,'sklearn')].name" -o tsv
 ```
 
@@ -83,7 +83,7 @@ image: mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest
 conda_file: ../src/conda-env.yml
 ```
 
-```bash
+```powershell
 az ml environment create --file infra/environment.yml
 ```
 
@@ -103,7 +103,7 @@ ml_client.environments.create_or_update(env)
 
 ### Step 3 — Register the components
 
-```bash
+```powershell
 az ml component create --file src/components/prep.yml
 az ml component create --file src/components/train.yml
 az ml component list -o table
@@ -122,14 +122,14 @@ In Studio: **Components** → open `train_diabetes_model` → see the auto-gener
 
 Creating a registry requires subscription-level permissions; skip if you lack them and just study the flow.
 
-```bash
+```powershell
 # registry.yml
-cat > infra/registry.yml <<'EOF'
+@'
 name: letsaml-registry
 location: <your-region>
 replication_locations:
   - location: <your-region>
-EOF
+'@ | Set-Content -Path infra/registry.yml
 
 az ml registry create --file infra/registry.yml
 

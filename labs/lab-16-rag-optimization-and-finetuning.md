@@ -63,7 +63,7 @@ Methods to know:
 
 ### Step 1 — Stand up Azure AI Search and connect it
 
-```bash
+```powershell
 az search service create --name letsaml-search -g rg-letsaml-genai --sku basic --location <region>
 ```
 
@@ -152,7 +152,7 @@ Foundry portal → **Fine-tuning → + Fine-tune model** → pick a tunable chat
 
 ### Step 6 — Clean up
 
-```bash
+```powershell
 az search service delete --name letsaml-search -g rg-letsaml-genai --yes
 # and if you're done with all GenAI labs:
 # az group delete --name rg-letsaml-genai --yes

@@ -1,0 +1,8 @@
+$schema: https://azuremlschemas.azureedge.net/latest/amlCompute.schema.json
+name: cpu-cluster
+type: amlcompute
+size: Standard_DS11_v2
+min_instances: 0          # scale to zero when idle → no idle cost
+max_instances: 2          # caps parallelism AND cost
+idle_time_before_scale_down: 120   # seconds a node stays warm after a job
+tier: dedicated           # try low_priority to see the cost difference

@@ -81,13 +81,13 @@ Azure ML sets up the inter-node communication (MASTER_ADDR, ranks, etc.). You wo
 Open `src/train.py`. Note the three things that make it "cloud-ready":
 
 1. `argparse` — all inputs arrive as CLI arguments (paths and hyperparameters), so the job YAML controls them.
-2. `mlflow.autolog()` + explicit `log_metric` — tracking with zero Azure-specific code.
+2. `mlflow.autolog()` + explicit `log_param` / `log_metric` — tracking with zero Azure-specific code.
 3. `mlflow.sklearn.log_model / save_model` — model saved in MLflow format with an input example (which gives it a **signature**).
 
 Run it locally first (fast feedback loop — always do this before submitting):
 
-```bash
-source .venv/bin/activate
+```powershell
+.\.venv\Scripts\Activate.ps1
 python src/train.py --training-data data/diabetes.csv --reg-rate 0.01
 ```
 
@@ -118,7 +118,7 @@ compute: azureml:cpu-cluster
 
 ### Step 3 — Submit and watch
 
-```bash
+```powershell
 az ml job create --file jobs/train-job.yml --web
 ```
 
@@ -130,13 +130,13 @@ az ml job create --file jobs/train-job.yml --web
 
 Stream logs from the terminal instead, if you prefer:
 
-```bash
+```powershell
 az ml job stream --name <job-name>
 ```
 
 ### Step 4 — Submit a second run with different hyperparameters
 
-```bash
+```powershell
 az ml job create --file jobs/train-job.yml --set inputs.reg_rate=1.0
 ```
 
@@ -160,18 +160,37 @@ mlflow.set_tracking_uri(
 
 runs = mlflow.search_runs(
     experiment_names=["diabetes-training"],
-    order_by=["metrics.test_auc DESC"],
 )
-print(runs[["run_id", "params.reg_rate", "metrics.test_auc", "metrics.test_accuracy"]])
+
+metric_columns = ["metrics.test_auc", "metrics.test_accuracy"]
+missing_metrics = [column for column in metric_columns if column not in runs.columns]
+if missing_metrics:
+  raise RuntimeError(
+    "No completed training runs with test metrics were found. "
+    "Wait for a job to complete, then run this script again."
+  )
+
+runs = runs.dropna(subset=metric_columns).copy()
+if runs.empty:
+  raise RuntimeError("No completed training runs contain test metrics.")
+runs = runs.sort_values("metrics.test_auc", ascending=False)
+
+if "params.reg_rate" not in runs.columns:
+  runs["params.reg_rate"] = "not logged"
+else:
+  runs["params.reg_rate"] = runs["params.reg_rate"].fillna("not logged")
+
+columns = ["run_id", "params.reg_rate", *metric_columns]
+print(runs[columns].to_string(index=False))
 best = runs.iloc[0]
 print(f"\nBest run: {best.run_id} (AUC {best['metrics.test_auc']:.4f})")
 ```
 
-```bash
+```powershell
 python compare_runs.py
 ```
 
-> **Exam point:** `mlflow.search_runs` with `order_by` on a metric is *the* pattern for "find the best model across jobs" — it also feeds automated model selection in CI/CD.
+> **Exam point:** `mlflow.search_runs` plus descending metric sorting is the pattern for "find the best model across jobs" — it also feeds automated model selection in CI/CD.
 
 ### Step 6 — SDK submission (recognize the shape)
 
@@ -200,10 +219,10 @@ print(returned.studio_url)
 
 ### Step 7 — Try serverless (delete nothing, manage nothing)
 
-```bash
-az ml job create --file jobs/train-job.yml \
-  --set compute=null \
-  --set resources.instance_type=Standard_DS11_v2 \
+```powershell
+az ml job create --file jobs/train-job.yml `
+  --set compute=null `
+  --set resources.instance_type=Standard_DS11_v2 `
   --set display_name=diabetes-train-serverless
 ```
 

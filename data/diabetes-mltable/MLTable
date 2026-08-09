@@ -15,7 +15,7 @@ transformations:
       encoding: utf8
   - convert_column_types:
       - columns: ["Pregnancies", "PlasmaGlucose", "DiastolicBloodPressure",
-                  "TricepsThickness", "SerumInsulin", "Age", "Diabetic"]
+            "TricepsThickness", "SerumInsulin", "Age"]
         column_type: int
       - columns: ["BMI", "DiabetesPedigree"]
         column_type: float

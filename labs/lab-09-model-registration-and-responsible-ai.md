@@ -63,11 +63,11 @@ The dashboard is built by chaining prebuilt **RAI components** (from the `azurem
 
 Find your best sweep child from Lab 07, then:
 
-```bash
-az ml model create \
-  --name diabetes-model \
-  --type mlflow_model \
-  --path "azureml://jobs/<best-child-job-name>/outputs/artifacts/paths/model" \
+```powershell
+az ml model create `
+  --name diabetes-model `
+  --type mlflow_model `
+  --path "azureml://jobs/<best-child-job-name>/outputs/artifacts/paths/model" `
   --description "LogReg tuned by sweep; trained on diabetes-csv:1"
 ```
 
@@ -83,7 +83,7 @@ mlflow.register_model(f"runs:/<best-child-run-id>/model", "diabetes-model")
 
 Both routes write to the same registry. Inspect what got stored:
 
-```bash
+```powershell
 az ml model show --name diabetes-model --version 1
 az ml model list --name diabetes-model -o table
 ```
@@ -92,12 +92,12 @@ In Studio → **Models → diabetes-model → Artifacts**: open the `MLmodel` fi
 
 ### Step 3 — Tag, then archive-and-restore a version
 
-```bash
+```powershell
 # Tags carry lifecycle metadata
 az ml model update --name diabetes-model --version 1 --set tags.stage=production tags.auc=<value>
 
 # Register a second version (e.g., from the Lab 05 baseline job) then archive it
-az ml model create --name diabetes-model --type mlflow_model \
+az ml model create --name diabetes-model --type mlflow_model `
   --path "azureml://jobs/<baseline-job-name>/outputs/artifacts/paths/model"
 az ml model archive --name diabetes-model --version 2
 az ml model list --name diabetes-model -o table          # v2 hidden
@@ -164,7 +164,7 @@ jobs:
       insight_2: ${{parent.jobs.explanation.outputs.explanation}}
 ```
 
-```bash
+```powershell
 az ml job create --file jobs/rai-pipeline.yml --web
 ```
 
